@@ -7,6 +7,8 @@ from playground.network.common import PlaygroundAddress
 from playground.network.common import StackingProtocol, StackingTransport, StackingProtocolFactory
 
 from Mypacket import RequestSentence, OriginalSentence, TranlatedSentence, Result
+from PassThrough1 import PassThroughProtocol1
+from PassThrough2 import PassThroughProtocol2
 
 
 class MyServerProtocol(asyncio.Protocol):

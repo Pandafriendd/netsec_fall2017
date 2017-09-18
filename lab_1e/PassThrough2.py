@@ -4,12 +4,13 @@ from playground.network.common import StackingProtocol, StackingTransport, Stack
 
 class PassThroughProtocol2(StackingProtocol):
     def __init__(self):
-        super().__init__
+        super().__init__()
 
     def connection_made(self, transport):
         self.transport = transport
         print("PassThroughLayer2 connection made")
-        self.higherProtocol().connection_made(self.trasnport)
+        print(self.higherProtocol())
+        self.higherProtocol().connection_made(StackingTransport(self.transport))
 
     def data_received(self, data):
         print("PassThroughLayer2 received data")
