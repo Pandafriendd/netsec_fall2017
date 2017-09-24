@@ -1,11 +1,18 @@
 import asyncio
+import logging
 
 import playground
 from playground.network.packet import PacketType
 from playground.network.packet.fieldtypes import UINT32, STRING, BUFFER, BOOL
 from playground.network.common import PlaygroundAddress
+from playground.network.common import StackingProtocol, StackingTransport, StackingProtocolFactory
 
 from Mypacket import RequestSentence, OriginalSentence, TranlatedSentence, Result
+from PassThrough1 import PassThroughProtocol1
+from PassThrough2 import PassThroughProtocol2
+
+logging.getLogger().setLevel(logging.NOTSET)  # this logs *everything*
+logging.getLogger().addHandler(logging.StreamHandler())  # logs to stderr
 
 
 class MyClientProtocol(asyncio.Protocol):
@@ -21,6 +28,8 @@ class MyClientProtocol(asyncio.Protocol):
         print("Sentence requst sent")
         # self.transport.write(pkt1Bytes)
         # print(pkt1Bytes)
+        sendRePkt = RequestSentence(clientID=1)
+        self.transport.write(sendRePkt.__serialize__())
 
     def sendRequest(self, cID):
         requireSentencePkt = RequestSentence(clientID=cID)
@@ -39,7 +48,6 @@ class MyClientProtocol(asyncio.Protocol):
                 print("serverID: {!r}".format(pkt.serverID))
                 print("ackClientID: {!r}".format(pkt.ackClientID))
                 print("originalSentence: {!r}".format(pkt.originalSentence))
-
                 print("Send a translatedsentence packet")
                 translatedPkt = TranlatedSentence(
                     clientID=pkt.ackClientID, ackServerID=pkt.serverID + 1, translatedSentence=b"wwwww")
@@ -64,6 +72,7 @@ class MyClientProtocol(asyncio.Protocol):
 
 
 loop = asyncio.get_event_loop()
+loop.set_debug(enabled=True)
 
 # coro = loop.create_connection(
 #     lambda: MyClientProtocol(loop), "127.0.0.1", 8001)
@@ -71,13 +80,24 @@ loop = asyncio.get_event_loop()
 # loop.run_forever()
 # loop.close()
 
+f = StackingProtocolFactory(
+    lambda: PassThroughProtocol1(), lambda: PassThroughProtocol2())
+ptConnector = playground.Connector(protocolStack=f)
+playground.setConnector("passthrough", ptConnector)
+
+# The purpose of the "getConnector" method is to decide what type of playground network connection you get.
+# coro = playground.getConnector("passthrough").create_playground_connection(
+#     lambda: MyClientProtocol(loop), '20174.1.1.1', 5555)
+# loop.run_until_complete(coro)
+# print("Client Connected(pt)")
+# loop.run_forever()
+# loop.close()
+
+# The default connector just connects application layer factory directly to the playground wire protocol
 coro = playground.getConnector().create_playground_connection(
     lambda: MyClientProtocol(loop), '20174.1.1.1', 5555)
+
 transport, protocol = loop.run_until_complete(coro)
 print("Client Connected. Starting UI t:{}. p:{}".format(transport, protocol))
-
-clientProtocol = MyClientProtocol(loop)
-clientProtocol.sendRequest(1)
-
 loop.run_forever()
 loop.close()
